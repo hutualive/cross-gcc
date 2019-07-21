@@ -54,4 +54,12 @@ for musl case, the script is single stage build. once gcc_toolchain_source(gcc w
 1. host gcc build out xgcc
 2. xgcc build out libgcc.a
 3. xgcc build out libc.a and libc.so
-4. host gcc build out arm-linux-musleabihf-gcc  
+4. host gcc build out arm-linux-musleabihf-gcc
+
+# arm-linux-musleabihf
+
+for my purpose, I want to build a toolchain for stm32mp1 target musl libc. the tuple is arm-linux-musleabihf for armv7.
+
+in the beginning, I try to build it step by step to understand the principals, or a simplified, purpose built simple makefile. after day and night errors & debugging, I give up and come back to the base of musl-cross-make. always do incremental stuff instead of re-inventing wheels or customizing too much in the beginning, otherwise you will catch the pain :)
+
+here I put the config.mak, top level Makefile, litecross/Makefile I'm using for your reference. I'm still figuring out how to do a "immutable" build use config.sub/hash. update to you soon.   
