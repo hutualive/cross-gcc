@@ -62,4 +62,6 @@ for my purpose, I want to build a toolchain for stm32mp1 target musl libc. the t
 
 in the beginning, I try to build it step by step to understand the principals, or a simplified, purpose built simple makefile. after day and night errors & debugging, I give up and come back to the base of musl-cross-make. always do incremental stuff instead of re-inventing wheels or customizing too much in the beginning, otherwise you will catch the pain :)
 
-here I put the config.mak, top level Makefile, litecross/Makefile I'm using for your reference. I'm still figuring out how to do a "immutable" build use config.sub/hash. update to you soon.   
+here I update the top level makefile with latest gcc-9.1.0, isl-0.21, cloog-0.18.4 and linux-4.19.60, the related hashes and patches applicable. if you are the same use case as me(arm-linux-musleabihf), simply make,  the script will download, extract, patch, build the toolchain automatically. then make install, you will have the toolchain under output and you can move to whatever your preferred path.
+
+have fun :)

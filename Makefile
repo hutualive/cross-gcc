@@ -1,6 +1,6 @@
 SOURCES = sources
 
-# CONFIG_SUB_REV = 3d5db9ebe860
+CONFIG_SUB_REV = 3d5db9ebe860
 
 BINUTILS_VER = 2.32
 GCC_VER = 9.1.0
@@ -10,20 +10,18 @@ MPC_VER = 1.1.0
 MPFR_VER = 4.0.2
 ISL_VER = 0.21
 CLOOG_VER = 0.18.4
-LINUX_VER = 4.19.59
+LINUX_VER = 4.19.60
 
-GNU_SITE = https://ftp.gnu.org/pub/gnu
+GNU_SITE = https://mirrors.tuna.tsinghua.edu.cn/gnu/
 GCC_SITE = $(GNU_SITE)/gcc
 BINUTILS_SITE = $(GNU_SITE)/binutils
 GMP_SITE = $(GNU_SITE)/gmp
 MPC_SITE = $(GNU_SITE)/mpc
 MPFR_SITE = $(GNU_SITE)/mpfr
 ISL_SITE = http://isl.gforge.inria.fr/
-
+CLOOG_SITE = http://www.bastoul.net/cloog/pages/download/count.php3?url=.
 MUSL_SITE = https://www.musl-libc.org/releases
-MUSL_REPO = git://git.musl-libc.org/musl
-
-LINUX_SITE = https://cdn.kernel.org/pub/linux/kernel
+LINUX_SITE = https://mirrors.tuna.tsinghua.edu.cn/kernel
 
 DL_CMD = wget -c -O
 
@@ -51,39 +49,38 @@ clean:
 # Rules for downloading and verifying sources. Treat an external SOURCES path as
 # immutable and do not try to download anything into it.
 
-# ifeq ($(SOURCES),sources)
+ifeq ($(SOURCES),sources)
 
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gmp*)): SITE = $(GMP_SITE)
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpc*)): SITE = $(MPC_SITE)
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpfr*)): SITE = $(MPFR_SITE)
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/isl*)): SITE = $(ISL_SITE)
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils*)): SITE = $(BINUTILS_SITE)
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc*)): SITE = $(GCC_SITE)/$(basename $(basename $(notdir $@)))
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl*)): SITE = $(MUSL_SITE)
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-4*)): SITE = $(LINUX_SITE)/v4.x
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-3*)): SITE = $(LINUX_SITE)/v3.x
-# $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-2.6*)): SITE = $(LINUX_SITE)/v2.6
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gmp*)): SITE = $(GMP_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpc*)): SITE = $(MPC_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpfr*)): SITE = $(MPFR_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/isl*)): SITE = $(ISL_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/cloog*)): SITE = $(CLOOG_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils*)): SITE = $(BINUTILS_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc*)): SITE = $(GCC_SITE)/$(basename $(basename $(notdir $@)))
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl*)): SITE = $(MUSL_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-4*)): SITE = $(LINUX_SITE)/v4.x
 
-# $(SOURCES):
-#	mkdir -p $@
+$(SOURCES):
+	mkdir -p $@
 
-# $(SOURCES)/config.sub: | $(SOURCES)
-#	mkdir -p $@.tmp
-#	cd $@.tmp && $(DL_CMD) $(notdir $@) "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)"
-#	cd $@.tmp && touch $(notdir $@)
-#	cd $@.tmp && sha1sum -c $(CURDIR)/hashes/$(notdir $@).$(CONFIG_SUB_REV).sha1
-#	mv $@.tmp/$(notdir $@) $@
-#	rm -rf $@.tmp
+$(SOURCES)/config.sub: | $(SOURCES)
+	mkdir -p $@.tmp
+	cd $@.tmp && $(DL_CMD) $(notdir $@) "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)"
+	cd $@.tmp && touch $(notdir $@)
+	cd $@.tmp && sha1sum -c $(CURDIR)/hashes/$(notdir $@).$(CONFIG_SUB_REV).sha1
+	mv $@.tmp/$(notdir $@) $@
+	rm -rf $@.tmp
 
-# $(SOURCES)/%: hashes/%.sha1 | $(SOURCES)
-#	mkdir -p $@.tmp
-#	cd $@.tmp && $(DL_CMD) $(notdir $@) $(SITE)/$(notdir $@)
-#	cd $@.tmp && touch $(notdir $@)
-#	cd $@.tmp && sha1sum -c $(CURDIR)/hashes/$(notdir $@).sha1
-#	mv $@.tmp/$(notdir $@) $@
-#	rm -rf $@.tmp
+$(SOURCES)/%: hashes/%.sha1 | $(SOURCES)
+	mkdir -p $@.tmp
+	cd $@.tmp && $(DL_CMD) $(notdir $@) $(SITE)/$(notdir $@)
+	cd $@.tmp && touch $(notdir $@)
+	cd $@.tmp && sha1sum -c $(CURDIR)/hashes/$(notdir $@).sha1
+	mv $@.tmp/$(notdir $@) $@
+	rm -rf $@.tmp
 
-#endif
+endif
 
 # Rules for extracting and patching sources, or checking them out from git.
 
@@ -93,37 +90,37 @@ clean:
 #	cd $@.tmp && git fsck
 #	mv $@.tmp $@
 
-# %: $(SOURCES)/%.tar.gz | $(SOURCES)/config.sub
-%: $(SOURCES)/%.tar.gz
+%: $(SOURCES)/%.tar.gz | $(SOURCES)/config.sub
+#%: $(SOURCES)/%.tar.gz
 	rm -rf $@.tmp
 	mkdir $@.tmp
 	( cd $@.tmp && tar zxvf - ) < $<
 	test ! -d patches/$@ || cat patches/$@/* | ( cd $@.tmp/$@ && patch -p1 )
-	#test ! -f $@.tmp/$@/config.sub || cp -f $(SOURCES)/config.sub $@.tmp/$@
+	test ! -f $@.tmp/$@/config.sub || cp -f $(SOURCES)/config.sub $@.tmp/$@
 	rm -rf $@
 	touch $@.tmp/$@
 	mv $@.tmp/$@ $@
 	rm -rf $@.tmp
 
-# %: $(SOURCES)/%.tar.bz2 | $(SOURCES)/config.sub
-%: $(SOURCES)/%.tar.bz2
+%: $(SOURCES)/%.tar.bz2 | $(SOURCES)/config.sub
+#%: $(SOURCES)/%.tar.bz2
 	rm -rf $@.tmp
 	mkdir $@.tmp
 	( cd $@.tmp && tar jxvf - ) < $<
 	test ! -d patches/$@ || cat patches/$@/* | ( cd $@.tmp/$@ && patch -p1 )
-	#test ! -f $@.tmp/$@/config.sub || cp -f $(SOURCES)/config.sub $@.tmp/$@
+	test ! -f $@.tmp/$@/config.sub || cp -f $(SOURCES)/config.sub $@.tmp/$@
 	rm -rf $@
 	touch $@.tmp/$@
 	mv $@.tmp/$@ $@
 	rm -rf $@.tmp
 
-# %: $(SOURCES)/%.tar.xz | $(SOURCES)/config.sub
-%: $(SOURCES)/%.tar.xz
+%: $(SOURCES)/%.tar.xz | $(SOURCES)/config.sub
+#%: $(SOURCES)/%.tar.xz
 	rm -rf $@.tmp
 	mkdir $@.tmp
 	( cd $@.tmp && tar Jxvf - ) < $<
 	test ! -d patches/$@ || cat patches/$@/* | ( cd $@.tmp/$@ && patch -p1 )
-	#test ! -f $@.tmp/$@/config.sub || cp -f $(SOURCES)/config.sub $@.tmp/$@
+	test ! -f $@.tmp/$@/config.sub || cp -f $(SOURCES)/config.sub $@.tmp/$@
 	rm -rf $@
 	touch $@.tmp/$@
 	mv $@.tmp/$@ $@
