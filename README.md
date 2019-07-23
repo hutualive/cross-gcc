@@ -34,7 +34,9 @@ https://github.com/richfelker/musl-cross-make
 
 it's a build script and support many targets, for our purpose, I suggest refer to the 1st link(how a toolchain is constructed) first. when you understand the principal, it's easier to understand the script under the hood.
 
-here my experimental target tuple is arm-linux-musleabihf as I have a stm32mp1 board(armv7 based with vfpv4-d16/neon).
+here my target tuple is arm-linux-musleabihf as I have a stm32mp1 board(armv7 based with vfpv4-d16/neon).
+
+cross-compiler need libc(musl libc) --> musl need be built by a cross-compiler(bootstrap compiler gcc2) --> bootstrap compiler need musl headers and start files(c runtme - crt) --> start files need be built by a cross-compiler(gcc1) and kernel headers(without need headers and start files) --> need cross assembler and linker(binutils).
 
 to summarize here again for the steps:
 
@@ -44,24 +46,90 @@ to summarize here again for the steps:
 4. libc need the linux kernel headers(system calls, data structures etc.)
 5. build libc need gcc
 6. to jailbreak, need a gcc without need of libc
-7. typically breakdown to two stages build: bare minimal gcc and 2nd stage gcc
-8. build bare minimal gcc to build c runtime for libc with libc and kernel headers
+7. typically breakdown to two stages build: bare minimal gcc(gcc1) and 2nd stage gcc(gcc2)
+8. build bare minimal gcc to build c runtime for libc with headers(libc and kernel)
 9. build 2nd stage gcc to build libc
-10. build full gcc  
+10. build full gcc
 
-for musl case, the script is single stage build. once gcc_toolchain_source(gcc with gmp, mpfr, mpc, isl, cloog + binutils) prepared, build gcc(xgcc) to build musl(libgcc.a), then build musl libc.a and libc.so, then final "make all" build the full gcc  -->
+# arm-linux-musleabihf based on musl-cross-make
 
-1. host gcc build out xgcc
-2. xgcc build out libgcc.a
-3. xgcc build out libc.a and libc.so
-4. host gcc build out arm-linux-musleabihf-gcc
+pre-requests -->
+1.GMP - the gnu multiple precision arithmetic library
+2.MPFR - the c library for multiple-precision floating-point computations with correct rounding
+3.MPC - the c library for the arithmetic of complex numbers
 
-# arm-linux-musleabihf
+optional pre-requests(enable loop optimation - graphite) -->
+ISL - the integer set library
+CLooG - the chunky loop generator, using the isl backend
+PPL - the parma polyhedra library
+CLooG/PPL - the chunky loop generator, using the ppl backend
 
-for my purpose, I want to build a toolchain for stm32mp1 target musl libc. the tuple is arm-linux-musleabihf for armv7.
+// enable link time optimation - lto -->
+libelf - the ELF object file access library
 
 in the beginning, I try to build it step by step to understand the principals, or a simplified, purpose built simple makefile. after day and night errors & debugging, I give up and come back to the base of musl-cross-make. always do incremental stuff instead of re-inventing wheels or customizing too much in the beginning, otherwise you will catch the pain :)
 
-here I update the top level makefile with latest gcc-9.1.0, isl-0.21, cloog-0.18.4 and linux-4.19.60, the related hashes and patches applicable. if you are the same use case as me(arm-linux-musleabihf), simply make,  the script will download, extract, patch, build the toolchain automatically. then make install, you will have the toolchain under output and you can move to whatever your preferred path.
+here I update the top level makefile with latest gcc-9.1.0, isl-0.21, cloog-0.18.4 and linux-4.19.60, the related hashes and patches applicable. if you are the same use case as me(arm-linux-musleabihf), simply make,  the script will download, extract, patch, build the toolchain automatically. then make install, you will have the toolchain under output.
 
-have fun :)
+ps: I test with kernel cross compile, the toolchain is not work out of box. still need tweak the CFLAGS/LDFGLAGS further. and the patches for GCC 9.1.0 is in question mark too.
+
+# arm-linux-musleabihf based on manual process
+
+finally I find a very good reference, to understand what's under the hood and also successfully build the cross compiler manually target for musl:
+
+http://goliath32.com/blog/2016-12-05.html
+
+CLFS embedded book is detailed step by step and the author of above blog refer to it for sure:
+
+http://clfs.org/view/clfs-embedded/arm/index.html
+
+here I list down the shell script step by step for your reference:
+
+// prepare environment
+1.1 unset CFLAGS
+1.2 export CLFS_HOST=$(echo ${MACHTYPE} | sed "s/-[^-]*/-cross/")
+1.3 export CLFS_TARGET=arm-linux-musleabihf
+1.4 export CLFS_ARCH=arm
+1.5 export CLFS_ARM_ARCH=armv7-a
+1.6 export CLFS_FLOAT=hard
+1.7 export CLFS_FPU=neon-vfpv4
+1.8 mkdir musl-9.1.0/${CLFS_TARGET}  --> toolchain target sysroot
+1.9 ln -sfv . musl-9.1.0/arm-linux-musleabihf/usr  --> make sure install to target sysroot
+
+// install kernel header
+2.1 cd linux-4.19.60
+2.2 make mrproper
+2.3 make ARCH=${CLFS_ARCH} headers_check
+2.4 make ARCH=${CLFS_ARCH} INSTALL_HDR_PATH=/home/dp/cross-gcc/musl-9.1.0/arm-linux-musleabihf headers_install
+
+// install binutils
+3.1 cd ../binutils-2.32
+3.2 mkdir build && cd build
+3.3 ../configure --prefix=/home/dp/cross-gcc/musl-9.1.0 --target=${CLFS_TARGET} --with-sysroot=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} --disable-nls --disable-multilib
+3.4 make configure-host && make -j8
+3.5 make install
+
+// install gcc1
+4.1 cd gcc-9.1.0
+4.2 ln -s ../gmp-6.1.2 gmp
+4.3 ln -s ../mpc-1.1.0 mpc
+4.4 ln -s ../mpfr-4.0.2 mpfr
+4.5 ln -s ../isl-0.21 isl
+4.6 ln -s ../cloog-0.18.4 cloog
+4.7 mkdir build1 && cd build1
+4.8 ../configure --prefix=/home/dp/cross-gcc/musl-9.1.0 --build=${CLFS_HOST} --host=${CLFS_HOST} --target=${CLFS_TARGET} --with-sysroot=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} --without-headers --with-newlib --disable-nls --disable-shared --disable-decimal-float --disable-libgomp --disable-libmudflap --disable-libssp --disable-libatomic --disable-libquadmath --disable-threads --disable-multilib --enable-languages=c --with-arch=${CLFS_ARM_ARCH} --with-float=${CLFS_FLOAT} --with-fpu=${CLFS_FPU}
+4.9 make -j8 all-gcc all-target-libgcc
+4.10 make install-gcc install-target-libgcc
+
+// install musl
+5.1 cd musl-1.1.22
+5.2 ./configure CROSS_COMPILE=${CLFS_TARGET}- --prefix=/ --target=${CLFS_TARGET}
+5.3 make -j8
+5.4 DESTDIR=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} make install
+
+// install gcc2
+6.1 cd gcc-9.1.0
+6.2 mkdir build2 && cd build2
+6.3 ../configure --prefix=/home/dp/cross-gcc/musl-9.1.0 --build=${CLFS_HOST} --host=${CLFS_HOST} --target=${CLFS_TARGET} --with-sysroot=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} --disable-nls --disable-libmudflap --disable-libssp --disable-libmpx --disable-multilib --disable-libsanitizer --enable-languages=c,c++ --enable-c99 --enable-long-long --with-arch=${CLFS_ARM_ARCH} --with-float=${CLFS_FLOAT} --with-fpu=${CLFS_FPU}
+6.4 make -j8
+6.5 make install
