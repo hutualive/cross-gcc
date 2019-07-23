@@ -86,50 +86,87 @@ http://clfs.org/view/clfs-embedded/arm/index.html
 here I list down the shell script step by step for your reference:
 
 // prepare environment
+
 1.1 unset CFLAGS
+
 1.2 export CLFS_HOST=$(echo ${MACHTYPE} | sed "s/-[^-]*/-cross/")
+
 1.3 export CLFS_TARGET=arm-linux-musleabihf
+
 1.4 export CLFS_ARCH=arm
+
 1.5 export CLFS_ARM_ARCH=armv7-a
+
 1.6 export CLFS_FLOAT=hard
+
 1.7 export CLFS_FPU=neon-vfpv4
+
 1.8 mkdir musl-9.1.0/${CLFS_TARGET}  --> toolchain target sysroot
+
 1.9 ln -sfv . musl-9.1.0/arm-linux-musleabihf/usr  --> make sure install to target sysroot
 
 // install kernel header
+
 2.1 cd linux-4.19.60
+
 2.2 make mrproper
+
 2.3 make ARCH=${CLFS_ARCH} headers_check
+
 2.4 make ARCH=${CLFS_ARCH} INSTALL_HDR_PATH=/home/dp/cross-gcc/musl-9.1.0/arm-linux-musleabihf headers_install
 
 // install binutils
+
 3.1 cd ../binutils-2.32
+
 3.2 mkdir build && cd build
+
 3.3 ../configure --prefix=/home/dp/cross-gcc/musl-9.1.0 --target=${CLFS_TARGET} --with-sysroot=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} --disable-nls --disable-multilib
+
 3.4 make configure-host && make -j8
+
 3.5 make install
 
 // install gcc1
+
 4.1 cd gcc-9.1.0
+
 4.2 ln -s ../gmp-6.1.2 gmp
+
 4.3 ln -s ../mpc-1.1.0 mpc
+
 4.4 ln -s ../mpfr-4.0.2 mpfr
+
 4.5 ln -s ../isl-0.21 isl
+
 4.6 ln -s ../cloog-0.18.4 cloog
+
 4.7 mkdir build1 && cd build1
+
 4.8 ../configure --prefix=/home/dp/cross-gcc/musl-9.1.0 --build=${CLFS_HOST} --host=${CLFS_HOST} --target=${CLFS_TARGET} --with-sysroot=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} --without-headers --with-newlib --disable-nls --disable-shared --disable-decimal-float --disable-libgomp --disable-libmudflap --disable-libssp --disable-libatomic --disable-libquadmath --disable-threads --disable-multilib --enable-languages=c --with-arch=${CLFS_ARM_ARCH} --with-float=${CLFS_FLOAT} --with-fpu=${CLFS_FPU}
+
 4.9 make -j8 all-gcc all-target-libgcc
+
 4.10 make install-gcc install-target-libgcc
 
 // install musl
+
 5.1 cd musl-1.1.22
+
 5.2 ./configure CROSS_COMPILE=${CLFS_TARGET}- --prefix=/ --target=${CLFS_TARGET}
+
 5.3 make -j8
+
 5.4 DESTDIR=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} make install
 
 // install gcc2
+
 6.1 cd gcc-9.1.0
+
 6.2 mkdir build2 && cd build2
+
 6.3 ../configure --prefix=/home/dp/cross-gcc/musl-9.1.0 --build=${CLFS_HOST} --host=${CLFS_HOST} --target=${CLFS_TARGET} --with-sysroot=/home/dp/cross-gcc/musl-9.1.0/${CLFS_TARGET} --disable-nls --disable-libmudflap --disable-libssp --disable-libmpx --disable-multilib --disable-libsanitizer --enable-languages=c,c++ --enable-c99 --enable-long-long --with-arch=${CLFS_ARM_ARCH} --with-float=${CLFS_FLOAT} --with-fpu=${CLFS_FPU}
+
 6.4 make -j8
+
 6.5 make install
